@@ -1,62 +1,118 @@
 package client.controller;
 
+import client.MainClientFX;
 import client.model.GameState;
-import client.ui.CaroClientFrame;
+import client.network.ClientReceiver;
+import client.network.ClientSocket;
+import common.packet.*;
+import javafx.application.Platform;
+import javafx.scene.control.Alert;
 
 public class ClientController {
 
     private final GameState gameState;
-    private final CaroClientFrame frame;
+    private final MainClientFX mainFX;
 
-    public ClientController() {
-        this.gameState = new GameState();
-        this.frame = new CaroClientFrame(this, gameState);
-    }
-
-    public void showUI() {
-        frame.setVisible(true);
+    public ClientController(GameState gameState, MainClientFX mainFX) {
+        this.gameState = gameState;
+        this.mainFX = mainFX;
     }
 
     public void onPlayNow(String playerName) {
-        String p1 = (playerName == null || playerName.trim().isEmpty())
-                ? "Player 1"
-                : playerName.trim();
-        String p2 = "Đối thủ";
-        gameState.resetForNewGame(p1, p2);
-        frame.initGameScreenFromState();
-        frame.showGameScreen();
+        // 1. Kết nối mạng
+        if (!ClientSocket.getInstance().isConnected()) {
+            if (!ClientSocket.getInstance().connect()) {
+                Platform.runLater(() -> {
+                    new Alert(Alert.AlertType.ERROR, "Không thể kết nối tới Server!").showAndWait();
+                });
+                return;
+            }
+            // Khởi động luồng nhận tin
+            new Thread(new ClientReceiver(this)).start();
+        }
+
+        // 2. Gửi JoinPacket
+        String name = (playerName == null || playerName.trim().isEmpty()) ? "Player" : playerName.trim();
+        ClientSocket.getInstance().send(new JoinPacket(name));
+
+        // Cập nhật trạng thái chờ trên UI (nếu cần)
     }
 
     public void onLocalCellClicked(int row, int col) {
-        if (gameState.isGameOver()) {
-            return;
-        }
-        if (!gameState.isLocalPlayersTurn()) {
+        // Chỉ cho phép đánh khi đến lượt và game chưa kết thúc
+        if (gameState.isGameOver() || !gameState.isLocalPlayersTurn()) {
             return;
         }
         if (!gameState.canPlace(row, col)) {
             return;
         }
 
-        gameState.placeMove(row, col);
-        frame.updateBoardCell(row, col, gameState.getSymbolAt(row, col), true);
-
-        int result = gameState.checkWin(row, col);
-        if (result != GameState.RESULT_NONE) {
-            gameState.setGameOver(true);
-            frame.handleGameResult(result);
-            return;
-        }
-
-        gameState.switchTurn();
-        frame.updateTurnHighlight();
+        // Gửi nước đi lên Server (không tự đánh cục bộ)
+        ClientSocket.getInstance().send(new MovePacket(row, col, String.valueOf(gameState.getLocalPlayerSymbol())));
     }
 
-    public void onTimeoutForCurrentPlayer() {
-        gameState.setGameOver(true);
-        int result = gameState.isPlayer1Turn()
-                ? GameState.RESULT_PLAYER2_WIN
-                : GameState.RESULT_PLAYER1_WIN;
-        frame.handleGameResult(result);
+    public void onPacketReceived(Packet packet) {
+        // Chuyển sang luồng JavaFX UI để xử lý an toàn
+        Platform.runLater(() -> {
+            PacketType type = packet.getType();
+            switch (type) {
+                case START:
+                    StartPacket sp = (StartPacket) packet;
+                    // Server báo bắt đầu trận
+                    gameState.resetForNewGame(gameState.getPlayer1Name(), sp.getOpponentName());
+                    gameState.setLocalPlayerSymbol(sp.getYourSymbol());
+
+                    // Chuyển sang màn hình game
+                    mainFX.switchToGameScene();
+                    break;
+
+                case MOVE:
+                    MovePacket mp = (MovePacket) packet;
+                    // Nhận nước đi từ Server (có thể là của mình hoặc đối thủ)
+                    char symbol = mp.getPlayerSymbol().charAt(0);
+                    int r = mp.getX();
+                    int c = mp.getY();
+
+                    gameState.placeMove(r, c);
+                    mainFX.updateBoardCell(r, c, symbol, true);
+
+                    // Đổi lượt
+                    gameState.switchTurn();
+                    mainFX.updateTurnHighlight();
+                    break;
+
+                case RESULT:
+                    ResultPacket rp = (ResultPacket) packet;
+                    gameState.setGameOver(true);
+                    mainFX.stopTimer();
+                    mainFX.showResultAlert(rp.getResultCode());
+                    break;
+
+                case MESSAGE:
+                    MessagePacket msg = (MessagePacket) packet;
+                    new Alert(Alert.AlertType.INFORMATION, msg.getMessage()).showAndWait();
+                    break;
+
+                case ERROR:
+                    ErrorPacket err = (ErrorPacket) packet;
+                    new Alert(Alert.AlertType.ERROR, err.getErrorMessage()).show();
+                    break;
+
+                default:
+                    break;
+            }
+        });
+    }
+
+    public void onTimeout() {
+        Platform.runLater(() -> {
+            mainFX.stopTimer();
+            if (gameState.isLocalPlayersTurn()) {
+                mainFX.showResultAlert(GameState.RESULT_PLAYER2_WIN); // Giả sử mình là P1 thì P2 thắng
+            } else {
+                mainFX.showResultAlert(GameState.RESULT_PLAYER1_WIN);
+            }
+            gameState.setGameOver(true);
+        });
     }
 }
