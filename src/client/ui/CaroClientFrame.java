@@ -5,10 +5,16 @@ import client.model.GameState;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 
 public class CaroClientFrame extends JFrame {
+
+    // === Color Constants ===
+    private static final Color BG_DARK = new Color(0x12, 0x16, 0x21);
+    private static final Color BG_PANEL = new Color(0x1D, 0x24, 0x33);
+    private static final Color BG_BOARD = new Color(0x18, 0x1F, 0x2E);
+    private static final Color COLOR_PRIMARY = new Color(0x2D, 0x89, 0xEF);
+    private static final Color COLOR_SECONDARY = new Color(0x36, 0x3B, 0x4A);
+    private static final Color COLOR_HIGHLIGHT = new Color(0x33, 0x99, 0xFF);
 
     private final ClientController controller;
     private final GameState gameState;
@@ -27,8 +33,6 @@ public class CaroClientFrame extends JFrame {
 
     private Timer turnTimer;
 
-    private Color defaultCellBg;
-
     public CaroClientFrame(ClientController controller, GameState gameState) {
         this.controller = controller;
         this.gameState = gameState;
@@ -45,14 +49,13 @@ public class CaroClientFrame extends JFrame {
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        // Nền tối tổng thể
-        mainPanel.setBackground(new Color(0x12, 0x16, 0x21));
+        mainPanel.setBackground(BG_DARK);
         add(mainPanel, BorderLayout.CENTER);
     }
 
     private void initHomePanel() {
         JPanel homePanel = new JPanel(new GridBagLayout());
-        homePanel.setBackground(new Color(0x12, 0x16, 0x21));
+        homePanel.setBackground(BG_DARK);
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 10, 10);
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -99,15 +102,15 @@ public class CaroClientFrame extends JFrame {
 
     private void initGamePanel() {
         JPanel gamePanel = new JPanel(new BorderLayout());
-        gamePanel.setBackground(new Color(0x12, 0x16, 0x21));
+        gamePanel.setBackground(BG_DARK);
 
         JPanel statusPanel = new JPanel(new GridLayout(1, 2, 8, 0));
         statusPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        statusPanel.setBackground(new Color(0x12, 0x16, 0x21));
+        statusPanel.setBackground(BG_DARK);
 
         JPanel p1Panel = new JPanel(new BorderLayout());
         p1Panel.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
-        p1Panel.setBackground(new Color(0x1D, 0x24, 0x33));
+        p1Panel.setBackground(BG_PANEL);
         lblPlayer1Name = new JLabel("Player 1", SwingConstants.LEFT);
         lblPlayer1Time = new JLabel("05:00", SwingConstants.RIGHT);
         lblPlayer1Name.setForeground(Color.WHITE);
@@ -117,7 +120,7 @@ public class CaroClientFrame extends JFrame {
 
         JPanel p2Panel = new JPanel(new BorderLayout());
         p2Panel.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
-        p2Panel.setBackground(new Color(0x1D, 0x24, 0x33));
+        p2Panel.setBackground(BG_PANEL);
         lblPlayer2Name = new JLabel("Đối thủ", SwingConstants.LEFT);
         lblPlayer2Time = new JLabel("05:00", SwingConstants.RIGHT);
         lblPlayer2Name.setForeground(Color.WHITE);
@@ -130,33 +133,20 @@ public class CaroClientFrame extends JFrame {
 
         int size = gameState.getBoardSize();
         boardPanel = new JPanel(new GridLayout(size, size));
-        boardPanel.setBackground(new Color(0x18, 0x1F, 0x2E));
+        boardPanel.setBackground(BG_BOARD);
         boardPanel.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
         cells = new JButton[size][size];
 
         for (int i = 0; i < size; i++) {
             for (int j = 0; j < size; j++) {
-                JButton cell = new JButton();
-                cell.setMargin(new Insets(0, 0, 0, 0));
-                cell.setFocusPainted(false);
-                cell.setBorderPainted(false);
-                cell.setContentAreaFilled(false);
-                cell.setOpaque(true);
-                cell.setBackground(new Color(0x18, 0x1F, 0x2E));
-                cell.setForeground(Color.WHITE);
-                cell.setFont(cell.getFont().deriveFont(Font.BOLD, 16f));
-                final int row = i;
-                final int col = j;
-                cell.addActionListener(e -> controller.onLocalCellClicked(row, col));
+                JButton cell = createBoardCell(i, j);
                 cells[i][j] = cell;
                 boardPanel.add(cell);
             }
         }
 
-        defaultCellBg = cells[0][0].getBackground();
-
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        bottomPanel.setBackground(new Color(0x12, 0x16, 0x21));
+        bottomPanel.setBackground(BG_DARK);
         JButton btnCancel = new JButton("Hủy ván chơi");
         styleSecondaryButton(btnCancel);
         btnCancel.addActionListener(e -> {
@@ -172,20 +162,31 @@ public class CaroClientFrame extends JFrame {
         mainPanel.add(gamePanel, "GAME");
     }
 
+    private JButton createBoardCell(int row, int col) {
+        JButton cell = new JButton();
+        cell.setMargin(new Insets(0, 0, 0, 0));
+        cell.setFocusPainted(false);
+        cell.setBorderPainted(false);
+        cell.setContentAreaFilled(false);
+        cell.setOpaque(true);
+        cell.setBackground(BG_BOARD);
+        cell.setForeground(Color.WHITE);
+        cell.setFont(cell.getFont().deriveFont(Font.BOLD, 16f));
+        cell.addActionListener(e -> controller.onLocalCellClicked(row, col));
+        return cell;
+    }
+
     private void setupTimer() {
-        turnTimer = new Timer(1000, new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (gameState.isGameOver()) {
-                    stopTimer();
-                    return;
-                }
-                gameState.decrementCurrentPlayerTime(1000);
-                updateTimeLabels();
-                if (gameState.isCurrentPlayerOutOfTime()) {
-                    stopTimer();
-                    controller.onTimeoutForCurrentPlayer();
-                }
+        turnTimer = new Timer(1000, e -> {
+            if (gameState.isGameOver()) {
+                stopTimer();
+                return;
+            }
+            gameState.decrementCurrentPlayerTime(1000);
+            updateTimeLabels();
+            if (gameState.isCurrentPlayerOutOfTime()) {
+                stopTimer();
+                controller.onTimeoutForCurrentPlayer();
             }
         });
         turnTimer.setRepeats(true);
@@ -221,7 +222,7 @@ public class CaroClientFrame extends JFrame {
         for (int i = 0; i < size; i++) {
             for (int j = 0; j < size; j++) {
                 cells[i][j].setText("");
-                cells[i][j].setBackground(new Color(0x18, 0x1F, 0x2E));
+                cells[i][j].setBackground(BG_BOARD);
                 cells[i][j].setEnabled(true);
             }
         }
@@ -243,21 +244,20 @@ public class CaroClientFrame extends JFrame {
         int size = gameState.getBoardSize();
         for (int i = 0; i < size; i++) {
             for (int j = 0; j < size; j++) {
-                cells[i][j].setBackground(new Color(0x18, 0x1F, 0x2E));
+                cells[i][j].setBackground(BG_BOARD);
             }
         }
     }
 
     public void updateTurnHighlight() {
         boolean p1Turn = gameState.isPlayer1Turn();
-        Color active = new Color(0x33, 0x99, 0xFF);
         Color normal = getBackground();
 
         lblPlayer1Name.setOpaque(true);
         lblPlayer2Name.setOpaque(true);
 
-        lblPlayer1Name.setBackground(p1Turn ? active : normal);
-        lblPlayer2Name.setBackground(p1Turn ? normal : active);
+        lblPlayer1Name.setBackground(p1Turn ? COLOR_HIGHLIGHT : normal);
+        lblPlayer2Name.setBackground(p1Turn ? normal : COLOR_HIGHLIGHT);
 
         lblPlayer1Name.repaint();
         lblPlayer2Name.repaint();
@@ -266,7 +266,7 @@ public class CaroClientFrame extends JFrame {
     private void stylePrimaryButton(JButton button) {
         button.setFocusPainted(false);
         button.setForeground(Color.WHITE);
-        button.setBackground(new Color(0x2D, 0x89, 0xEF));
+        button.setBackground(COLOR_PRIMARY);
         button.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
@@ -274,7 +274,7 @@ public class CaroClientFrame extends JFrame {
     private void styleSecondaryButton(JButton button) {
         button.setFocusPainted(false);
         button.setForeground(Color.WHITE);
-        button.setBackground(new Color(0x36, 0x3B, 0x4A));
+        button.setBackground(COLOR_SECONDARY);
         button.setBorder(BorderFactory.createEmptyBorder(6, 14, 6, 14));
         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
@@ -310,4 +310,3 @@ public class CaroClientFrame extends JFrame {
         }
     }
 }
-
