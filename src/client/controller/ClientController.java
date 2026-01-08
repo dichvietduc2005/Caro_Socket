@@ -34,8 +34,6 @@ public class ClientController {
         // 2. Gửi JoinPacket
         String name = (playerName == null || playerName.trim().isEmpty()) ? "Player" : playerName.trim();
         ClientSocket.getInstance().send(new JoinPacket(name));
-
-        // Cập nhật trạng thái chờ trên UI (nếu cần)
     }
 
     public void onLocalCellClicked(int row, int col) {
@@ -47,8 +45,9 @@ public class ClientController {
             return;
         }
 
-        // Gửi nước đi lên Server (không tự đánh cục bộ)
-        ClientSocket.getInstance().send(new MovePacket(row, col, String.valueOf(gameState.getLocalPlayerSymbol())));
+        // --- SỬA LỖI TẠI ĐÂY ---
+        // MovePacket chỉ cần row và col. Server đã biết ai gửi gói tin này rồi.
+        ClientSocket.getInstance().send(new MovePacket(row, col));
     }
 
     public void onPacketReceived(Packet packet) {
@@ -58,39 +57,43 @@ public class ClientController {
             switch (type) {
                 case START:
                     StartPacket sp = (StartPacket) packet;
-                    // Server báo bắt đầu trận
                     gameState.resetForNewGame(gameState.getPlayer1Name(), sp.getOpponentName());
                     gameState.setLocalPlayerSymbol(sp.getYourSymbol());
-
-                    // Chuyển sang màn hình game
                     mainFX.switchToGameScene();
                     break;
 
-                case MOVE:
-                    MovePacket mp = (MovePacket) packet;
-                    // Nhận nước đi từ Server (có thể là của mình hoặc đối thủ)
-                    char symbol = mp.getPlayerSymbol().charAt(0);
-                    int r = mp.getX();
-                    int c = mp.getY();
+                // --- CẬP NHẬT LOGIC NHẬN BÀN CỜ TỪ SERVER ---
+                // Server gửi UpdatePacket thay vì MovePacket
+                case UPDATE:
+                    if (packet instanceof UpdatePacket) {
+                        UpdatePacket up = (UpdatePacket) packet;
+                        int[][] board = up.getBoard();
+                        int nextTurnPlayerId = up.getCurrentPlayer();
 
-                    gameState.placeMove(r, c);
-                    mainFX.updateBoardCell(r, c, symbol, true);
+                        // Cập nhật lại toàn bộ giao diện bàn cờ dựa trên mảng 2 chiều nhận được
+                        updateBoardUI(board);
 
-                    // Đổi lượt
-                    gameState.switchTurn();
-                    mainFX.updateTurnHighlight();
+                        // Cập nhật lượt đi (Server gửi ID người đi tiếp: 1 hoặc 2)
+                        // Bạn cần ánh xạ ID này về logic của client (IsLocalTurn hay không)
+                        // Giả sử: StartPacket trả về ID của mình, ta cần lưu lại để so sánh.
+                        // Để đơn giản, ta cứ đổi lượt dựa trên state hiện tại:
+                        gameState.switchTurn();
+                        mainFX.updateTurnHighlight();
+                    }
                     break;
 
                 case RESULT:
                     ResultPacket rp = (ResultPacket) packet;
                     gameState.setGameOver(true);
                     mainFX.stopTimer();
+                    // Code 1: Thắng, Code 2: Thua, Code 4: Đối thủ thoát
+                    String msg = (rp.getResultCode() == 1 || rp.getResultCode() == 4) ? "CHIẾN THẮNG!" : "THẤT BẠI!";
                     mainFX.showResultAlert(rp.getResultCode());
                     break;
 
                 case MESSAGE:
-                    MessagePacket msg = (MessagePacket) packet;
-                    new Alert(Alert.AlertType.INFORMATION, msg.getMessage()).showAndWait();
+                    MessagePacket msgPacket = (MessagePacket) packet;
+                    new Alert(Alert.AlertType.INFORMATION, msgPacket.getMessage()).showAndWait();
                     break;
 
                 case ERROR:
@@ -104,11 +107,26 @@ public class ClientController {
         });
     }
 
+    // Hàm phụ trợ để vẽ lại bàn cờ từ dữ liệu Server gửi về
+    private void updateBoardUI(int[][] board) {
+        for (int r = 0; r < board.length; r++) {
+            for (int c = 0; c < board[r].length; c++) {
+                int value = board[r][c]; // 0: Trống, 1: X, 2: O (Giả định quy ước Server)
+                if (value != 0) {
+                    // Mapping giá trị int sang ký tự
+                    char symbol = (value == 1) ? 'X' : 'O';
+                    gameState.placeMove(r, c); // Cập nhật logic client
+                    mainFX.updateBoardCell(r, c, symbol, true); // Vẽ lên giao diện
+                }
+            }
+        }
+    }
+
     public void onTimeout() {
         Platform.runLater(() -> {
             mainFX.stopTimer();
             if (gameState.isLocalPlayersTurn()) {
-                mainFX.showResultAlert(GameState.RESULT_PLAYER2_WIN); // Giả sử mình là P1 thì P2 thắng
+                mainFX.showResultAlert(GameState.RESULT_PLAYER2_WIN);
             } else {
                 mainFX.showResultAlert(GameState.RESULT_PLAYER1_WIN);
             }
