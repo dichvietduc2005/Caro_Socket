@@ -4,10 +4,10 @@ import common.packet.*;
 import server.network.ClientHandler;
 
 public class GameRoom {
-    private String roomId;
-    private ClientHandler player1; // Đi trước (X)
-    private ClientHandler player2; // Đi sau (O)
-    private GameBoard gameBoard;
+    private final String roomId;
+    private final ClientHandler player1; // Đi trước (X)
+    private final ClientHandler player2; // Đi sau (O)
+    private final GameBoard gameBoard;
     private int currentTurn; // 1 hoặc 2
 
     public GameRoom(String roomId, ClientHandler p1, ClientHandler p2) {
