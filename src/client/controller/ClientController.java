@@ -73,11 +73,10 @@ public class ClientController {
                         // Cập nhật lại toàn bộ giao diện bàn cờ dựa trên mảng 2 chiều nhận được
                         updateBoardUI(board);
 
-                        // Cập nhật lượt đi (Server gửi ID người đi tiếp: 1 hoặc 2)
-                        // Bạn cần ánh xạ ID này về logic của client (IsLocalTurn hay không)
-                        // Giả sử: StartPacket trả về ID của mình, ta cần lưu lại để so sánh.
-                        // Để đơn giản, ta cứ đổi lượt dựa trên state hiện tại:
-                        gameState.switchTurn();
+                        // Đồng bộ lượt đi chính xác với Server
+                        // Server gửi nextTurnPlayerId: 1 = player1 (X), 2 = player2 (O)
+                        boolean isPlayer1Turn = (nextTurnPlayerId == 1);
+                        gameState.setPlayer1Turn(isPlayer1Turn);
                         mainFX.updateTurnHighlight();
                     }
                     break;
@@ -86,8 +85,6 @@ public class ClientController {
                     ResultPacket rp = (ResultPacket) packet;
                     gameState.setGameOver(true);
                     mainFX.stopTimer();
-                    // Code 1: Thắng, Code 2: Thua, Code 4: Đối thủ thoát
-                    String msg = (rp.getResultCode() == 1 || rp.getResultCode() == 4) ? "CHIẾN THẮNG!" : "THẤT BẠI!";
                     mainFX.showResultAlert(rp.getResultCode());
                     break;
 
@@ -99,6 +96,16 @@ public class ClientController {
                 case ERROR:
                     ErrorPacket err = (ErrorPacket) packet;
                     new Alert(Alert.AlertType.ERROR, err.getErrorMessage()).show();
+                    break;
+
+                case DRAW_REQUEST:
+                    // Đối thủ yêu cầu cầu hòa - hiển thị dialog hỏi
+                    Alert drawAlert = new Alert(Alert.AlertType.CONFIRMATION,
+                            "Đối thủ yêu cầu cầu hòa. Bạn có đồng ý?");
+                    drawAlert.showAndWait().ifPresent(response -> {
+                        boolean accepted = (response == javafx.scene.control.ButtonType.OK);
+                        onDrawResponse(accepted);
+                    });
                     break;
 
                 default:
@@ -132,5 +139,26 @@ public class ClientController {
             }
             gameState.setGameOver(true);
         });
+    }
+
+    /**
+     * Gửi yêu cầu xin thua lên Server
+     */
+    public void onSurrender() {
+        ClientSocket.getInstance().send(new SurrenderPacket());
+    }
+
+    /**
+     * Gửi yêu cầu cầu hòa lên Server
+     */
+    public void onDrawRequest() {
+        ClientSocket.getInstance().send(new DrawRequestPacket());
+    }
+
+    /**
+     * Gửi phản hồi cầu hòa lên Server
+     */
+    public void onDrawResponse(boolean accepted) {
+        ClientSocket.getInstance().send(new DrawResponsePacket(accepted));
     }
 }

@@ -14,6 +14,7 @@ public class ClientHandler implements Runnable {
     private ObjectInputStream in;
     private GameRoom gameRoom;
     private int playerID; // 1 hoặc 2 (được set bởi GameRoom)
+    private String playerName = "Player"; // Tên người chơi (nhận từ JoinPacket)
 
     public ClientHandler(Socket socket) {
         this.socket = socket;
@@ -38,6 +39,10 @@ public class ClientHandler implements Runnable {
         return playerID;
     }
 
+    public String getPlayerName() {
+        return playerName;
+    }
+
     // Gửi packet xuống Client
     public synchronized void sendPacket(Packet packet) {
         try {
@@ -52,7 +57,7 @@ public class ClientHandler implements Runnable {
     // Gửi thông báo dạng chuỗi (dùng MessagePacket nếu có, hoặc custom)
     public void sendMessage(String msg) {
         // Giả sử bạn có class MessagePacket extends Packet
-        // sendPacket(new MessagePacket(msg)); 
+        // sendPacket(new MessagePacket(msg));
         System.out.println("Server to Client " + (playerID != 0 ? playerID : "?") + ": " + msg);
     }
 
@@ -75,17 +80,53 @@ public class ClientHandler implements Runnable {
     }
 
     private void handlePacket(Packet packet) {
-        if (packet.getType() == PacketType.MOVE) {
-            // Xử lý nước đi
-            // Cần ép kiểu về MovePacket để lấy tọa độ x, y
+        PacketType type = packet.getType();
+
+        // Xử lý JoinPacket - lưu tên người chơi
+        if (type == PacketType.JOIN) {
+            if (packet instanceof JoinPacket) {
+                JoinPacket joinPacket = (JoinPacket) packet;
+                this.playerName = joinPacket.getPlayerName();
+                System.out.println("Player joined: " + playerName);
+            }
+            return;
+        }
+
+        // Xử lý MovePacket - nước đi
+        if (type == PacketType.MOVE) {
             if (packet instanceof MovePacket) {
                 MovePacket move = (MovePacket) packet;
                 gameRoom.processMove(this, move.getX(), move.getY());
             }
-        } 
-        // Xử lý các loại packet khác nếu cần (ví dụ chat, restart...)
+            return;
+        }
+
+        // Xử lý SurrenderPacket - xin thua
+        if (type == PacketType.SURRENDER) {
+            if (gameRoom != null) {
+                gameRoom.handleSurrender(this);
+            }
+            return;
+        }
+
+        // Xử lý DrawRequestPacket - yêu cầu cầu hòa
+        if (type == PacketType.DRAW_REQUEST) {
+            if (gameRoom != null) {
+                gameRoom.handleDrawRequest(this);
+            }
+            return;
+        }
+
+        // Xử lý DrawResponsePacket - phản hồi cầu hòa
+        if (type == PacketType.DRAW_RESPONSE) {
+            if (packet instanceof DrawResponsePacket && gameRoom != null) {
+                DrawResponsePacket response = (DrawResponsePacket) packet;
+                gameRoom.handleDrawResponse(this, response.isAccepted());
+            }
+            return;
+        }
     }
-    
+
     public void close() {
         try {
             socket.close();

@@ -17,8 +17,10 @@ public class GameBoard {
     }
 
     public boolean makeMove(int x, int y, int playerID) {
-        if (x < 0 || x >= SIZE || y < 0 || y >= SIZE) return false;
-        if (map[x][y] != 0) return false;
+        if (x < 0 || x >= SIZE || y < 0 || y >= SIZE)
+            return false;
+        if (map[x][y] != 0)
+            return false;
 
         map[x][y] = playerID;
         return true;
@@ -52,6 +54,19 @@ public class GameBoard {
         return x >= 0 && x < SIZE && y >= 0 && y < SIZE;
     }
 
+    /**
+     * Kiểm tra bàn cờ đã đầy chưa (dùng để xác định hòa)
+     */
+    public boolean isFull() {
+        for (int i = 0; i < SIZE; i++) {
+            for (int j = 0; j < SIZE; j++) {
+                if (map[i][j] == 0) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 
     public static void main(String[] args) {
         GameBoard board = new GameBoard();

@@ -383,15 +383,14 @@ public class MainClientFX extends Application {
         btnSurrender.setOnAction(e -> {
             if (new Alert(Alert.AlertType.CONFIRMATION, "Bạn có chắc muốn xin thua?").showAndWait()
                     .orElse(null) == ButtonType.OK) {
-                // TODO: Gửi packet xin thua lên server
-                gameState.setGameOver(true);
-                stopTimer();
-                showResultAlert(GameState.RESULT_PLAYER2_WIN);
+                // Gửi packet xin thua lên server
+                controller.onSurrender();
             }
         });
 
         btnDraw.setOnAction(e -> {
-            // TODO: Gửi packet cầu hòa lên server
+            // Gửi packet cầu hòa lên server
+            controller.onDrawRequest();
             new Alert(Alert.AlertType.INFORMATION, "Đã gửi yêu cầu cầu hòa đến đối thủ.").showAndWait();
         });
 
