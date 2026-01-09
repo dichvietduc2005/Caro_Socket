@@ -2,44 +2,35 @@ package client;
 
 import client.controller.ClientController;
 import client.model.GameState;
+import javafx.animation.FadeTransition;
+import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.ScaleTransition;
 import javafx.animation.Timeline;
 import javafx.application.Application;
-import javafx.application.Platform;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
+import javafx.scene.Group;
 import javafx.scene.Node;
+import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.scene.paint.LinearGradient;
-import javafx.scene.paint.Stop;
-import javafx.scene.paint.CycleMethod;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
-import javafx.scene.layout.Border;
-import javafx.scene.layout.BorderStroke;
-import javafx.scene.layout.BorderStrokeStyle;
-import javafx.scene.layout.BorderWidths;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.StrokeLineCap;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.Group;
-import javafx.scene.effect.DropShadow;
-import javafx.scene.effect.Glow;
-import javafx.animation.FadeTransition;
-import javafx.animation.ScaleTransition;
-import javafx.animation.Interpolator;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-import javafx.animation.KeyValue;
 
 public class MainClientFX extends Application {
 
@@ -47,15 +38,17 @@ public class MainClientFX extends Application {
 
     private Label lblPlayer1Time;
     private Label lblPlayer2Time;
+    private Label lblPlayer1Name;
+    private Label lblPlayer2Name;
 
     private Circle avatar1;
     private Circle avatar2;
 
-    // Lưu progressFill để update width
-    private javafx.scene.shape.Rectangle progressFill1;
-    private javafx.scene.shape.Rectangle progressFill2;
-    private VBox p1Box;
-    private VBox p2Box;
+    // Top bar thay vì 2 player cards riêng
+    private HBox topBar;
+    private HBox player1Section;
+    private HBox player2Section;
+
     private Button[][] cells;
     private StackPane[][] cellPanes; // Để chứa Button + Shape (X/O)
 
@@ -234,36 +227,71 @@ public class MainClientFX extends Application {
 
     private Scene createGameScene(Stage stage) {
         BorderPane root = new BorderPane();
-        root.setBackground(new Background(new BackgroundFill(Color.web("#121621"), CornerRadii.EMPTY, Insets.EMPTY)));
+        root.setBackground(new Background(new BackgroundFill(Color.web("#0A0E1A"), CornerRadii.EMPTY, Insets.EMPTY)));
 
-        HBox top = new HBox(12);
-        top.setPadding(new Insets(16));
-        top.setAlignment(Pos.CENTER);
-        top.setBackground(new Background(new BackgroundFill(Color.web("#121621"), CornerRadii.EMPTY, Insets.EMPTY)));
+        // ============ COMPACT TOP BAR ============
+        topBar = new HBox();
+        topBar.setPadding(new Insets(10, 20, 10, 20));
+        topBar.setAlignment(Pos.CENTER);
+        topBar.setBackground(
+                new Background(new BackgroundFill(Color.web("#1A1F2E"), new CornerRadii(12), Insets.EMPTY)));
+        topBar.setStyle(
+                "-fx-background-radius: 12; -fx-border-radius: 12; -fx-border-color: #2A3F5F; -fx-border-width: 1;");
+        topBar.setMaxHeight(60);
 
-        // Player 1 Card với Avatar
-        p1Box = createPlayerCard(
+        // --- Player 1 Section (Left) ---
+        player1Section = createCompactPlayerInfo(
                 gameState.getPlayer1Name(),
                 'X',
-                Color.web("#4A90E2"),
-                Color.web("#357ABD"));
-        p1Box.setId("player1Card");
+                Color.web("#E74C3C"),
+                true);
 
-        // Player 2 Card với Avatar
-        p2Box = createPlayerCard(
+        // --- Score Display (Center) ---
+        HBox scoreSection = new HBox(8);
+        scoreSection.setAlignment(Pos.CENTER);
+        scoreSection.setPadding(new Insets(0, 30, 0, 30));
+
+        Label crownIcon = new Label("👑");
+        crownIcon.setFont(Font.font(16));
+
+        Label score1 = new Label("0");
+        score1.setTextFill(Color.WHITE);
+        score1.setFont(Font.font("Arial", FontWeight.BOLD, 18));
+
+        Label scoreSep = new Label("•");
+        scoreSep.setTextFill(Color.web("#888888"));
+        scoreSep.setFont(Font.font("Arial", 18));
+
+        Label score2 = new Label("0");
+        score2.setTextFill(Color.WHITE);
+        score2.setFont(Font.font("Arial", FontWeight.BOLD, 18));
+
+        Label skullIcon = new Label("💀");
+        skullIcon.setFont(Font.font(16));
+
+        scoreSection.getChildren().addAll(crownIcon, score1, scoreSep, score2, skullIcon);
+
+        // --- Player 2 Section (Right) ---
+        player2Section = createCompactPlayerInfo(
                 gameState.getPlayer2Name(),
                 'O',
-                Color.web("#50C878"),
-                Color.web("#3FA568"));
-        p2Box.setId("player2Card");
+                Color.web("#2ECC71"),
+                false);
 
-        HBox.setHgrow(p1Box, Priority.ALWAYS);
-        HBox.setHgrow(p2Box, Priority.ALWAYS);
-        p1Box.setMaxWidth(Double.MAX_VALUE);
-        p2Box.setMaxWidth(Double.MAX_VALUE);
+        // Spacers để căn giữa score
+        Region spacer1 = new Region();
+        Region spacer2 = new Region();
+        HBox.setHgrow(spacer1, Priority.ALWAYS);
+        HBox.setHgrow(spacer2, Priority.ALWAYS);
 
-        top.getChildren().addAll(p1Box, p2Box);
-        root.setTop(top);
+        topBar.getChildren().addAll(player1Section, spacer1, scoreSection, spacer2, player2Section);
+
+        // Wrapper với margin
+        VBox topWrapper = new VBox(topBar);
+        topWrapper.setPadding(new Insets(10, 16, 5, 16));
+        topWrapper.setBackground(
+                new Background(new BackgroundFill(Color.web("#0A0E1A"), CornerRadii.EMPTY, Insets.EMPTY)));
+        root.setTop(topWrapper);
 
         int size = gameState.getBoardSize();
         GridPane grid = new GridPane();
@@ -421,111 +449,78 @@ public class MainClientFX extends Application {
         return gameScene;
     }
 
-    private VBox createPlayerCard(String playerName, char symbol, Color avatarColor1, Color avatarColor2) {
-        VBox card = new VBox(12);
-        card.setPadding(new Insets(16, 20, 16, 20));
-        card.setAlignment(Pos.CENTER_LEFT);
-        card.setStyle(
-                "-fx-background-color: #0F1419; " +
-                        "-fx-border-color: #2A3F5F; " +
-                        "-fx-border-width: 2; " +
-                        "-fx-border-radius: 12; " +
-                        "-fx-background-radius: 12;");
+    /**
+     * Tạo compact player info section cho top bar
+     * 
+     * @param playerName  Tên người chơi
+     * @param symbol      X hoặc O
+     * @param avatarColor Màu avatar
+     * @param isLeftSide  true = player 1 (bên trái), false = player 2 (bên phải)
+     */
+    private HBox createCompactPlayerInfo(String playerName, char symbol, Color avatarColor, boolean isLeftSide) {
+        HBox container = new HBox(10);
+        container.setAlignment(isLeftSide ? Pos.CENTER_LEFT : Pos.CENTER_RIGHT);
 
-        // Header: Avatar + Name + Symbol
-        HBox topSection = new HBox(16);
-        topSection.setAlignment(Pos.CENTER_LEFT);
-
-        // Avatar lớn hơn với glow
+        // Avatar nhỏ gọn (40px)
         StackPane avatarContainer = new StackPane();
-        avatarContainer.setPrefSize(60, 60);
+        avatarContainer.setPrefSize(40, 40);
         avatarContainer.setAlignment(Pos.CENTER);
 
-        Circle avatarBg = new Circle(30);
-        LinearGradient gradient = new LinearGradient(0, 0, 1, 1, true, CycleMethod.NO_CYCLE,
-                new Stop(0, avatarColor1),
-                new Stop(1, avatarColor2));
-        avatarBg.setFill(gradient);
+        Circle avatarBg = new Circle(20);
+        avatarBg.setFill(avatarColor);
 
-        // Glow effect mạnh
-        DropShadow avatarGlow = new DropShadow();
-        avatarGlow.setColor(avatarColor1.interpolate(avatarColor2, 0.5));
-        avatarGlow.setRadius(12);
-        avatarGlow.setSpread(0.5);
-        avatarBg.setEffect(avatarGlow);
+        // Glow effect
+        DropShadow glow = new DropShadow();
+        glow.setColor(avatarColor);
+        glow.setRadius(8);
+        glow.setSpread(0.4);
+        avatarBg.setEffect(glow);
 
-        // Symbol badge lớn hơn
-        Label symbolBadge = new Label(String.valueOf(symbol));
-        symbolBadge.setTextFill(Color.WHITE);
-        symbolBadge.setFont(Font.font("Arial", FontWeight.BOLD, 28));
-        symbolBadge.setAlignment(Pos.CENTER);
+        // Symbol trên avatar
+        Label symbolLabel = new Label(String.valueOf(symbol));
+        symbolLabel.setTextFill(Color.WHITE);
+        symbolLabel.setFont(Font.font("Arial", FontWeight.BOLD, 18));
 
-        avatarContainer.getChildren().addAll(avatarBg, symbolBadge);
+        avatarContainer.getChildren().addAll(avatarBg, symbolLabel);
 
-        // Thông tin người chơi (tên + ký hiệu)
-        VBox infoBox = new VBox(4);
-        infoBox.setAlignment(Pos.CENTER_LEFT);
-
+        // Tên người chơi
         Label nameLabel = new Label(playerName);
         nameLabel.setTextFill(Color.WHITE);
-        nameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 16));
+        nameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 14));
 
-        Label symbolLabel = new Label("Ký hiệu: " + symbol);
-        symbolLabel.setTextFill(Color.web("#888888"));
-        symbolLabel.setFont(Font.font("Arial", 12));
-
-        infoBox.getChildren().addAll(nameLabel, symbolLabel);
-
-        topSection.getChildren().addAll(avatarContainer, infoBox);
-
-        // Timer section: Time + Progress bar
-        HBox timerSection = new HBox(12);
-        timerSection.setAlignment(Pos.CENTER_LEFT);
-        timerSection.setPadding(new Insets(8, 0, 0, 0));
-
-        // Time label
+        // Timer với background
         Label timeLabel = new Label("05:00");
         timeLabel.setTextFill(Color.WHITE);
-        timeLabel.setFont(Font.font("Arial", FontWeight.BOLD, 20));
-        timeLabel.setPrefWidth(70);
+        timeLabel.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+        timeLabel.setPadding(new Insets(4, 10, 4, 10));
+        timeLabel.setStyle("-fx-background-color: " + toHexString(avatarColor) + "; -fx-background-radius: 6;");
 
-        // Progress bar (horizontal)
-        StackPane progressBar = new StackPane();
-        progressBar.setPrefHeight(12);
-        progressBar.setPrefWidth(180);
-        progressBar.setStyle(
-                "-fx-background-color: #1A2335; " +
-                        "-fx-border-color: #2A3F5F; " +
-                        "-fx-border-width: 1; " +
-                        "-fx-border-radius: 6; " +
-                        "-fx-background-radius: 6;");
-
-        // Progress fill - Rectangle dạng bar (sẽ update width)
-        javafx.scene.shape.Rectangle progressFill = new javafx.scene.shape.Rectangle();
-        progressFill.setHeight(12);
-        progressFill.setWidth(180); // Full width initially
-        progressFill.setFill(Color.web("#4A90E2")); // Sẽ đổi màu dựa trên time
-        progressFill.setArcWidth(6);
-        progressFill.setArcHeight(6);
-
-        progressBar.getChildren().add(progressFill);
-
-        timerSection.getChildren().addAll(timeLabel, progressBar);
-
-        card.getChildren().addAll(topSection, timerSection);
-
-        // Lưu reference cho player 1 hoặc player 2
-        if (symbol == 'X') {
+        // Sắp xếp theo hướng (player 1 bên trái, player 2 bên phải)
+        if (isLeftSide) {
+            container.getChildren().addAll(avatarContainer, nameLabel, timeLabel);
+            // Lưu references cho player 1
             avatar1 = avatarBg;
-            progressFill1 = progressFill; // Lưu để update width
             lblPlayer1Time = timeLabel;
+            lblPlayer1Name = nameLabel;
         } else {
+            container.getChildren().addAll(timeLabel, nameLabel, avatarContainer);
+            // Lưu references cho player 2
             avatar2 = avatarBg;
-            progressFill2 = progressFill; // Lưu để update width
             lblPlayer2Time = timeLabel;
+            lblPlayer2Name = nameLabel;
         }
 
-        return card;
+        return container;
+    }
+
+    /**
+     * Chuyển Color sang hex string
+     */
+    private String toHexString(Color color) {
+        return String.format("#%02X%02X%02X",
+                (int) (color.getRed() * 255),
+                (int) (color.getGreen() * 255),
+                (int) (color.getBlue() * 255));
     }
 
     private void handleCellClick(int row, int col) {
@@ -686,43 +681,54 @@ public class MainClientFX extends Application {
     public void updateTurnHighlight() {
         boolean p1Turn = gameState.isPlayer1Turn();
 
-        // Highlight player card đang active với border và glow effect
-        Color activeBorder = Color.web("#3399FF");
-        Color normalBorder = Color.web("#2A2F3E");
-        Color activeBg = Color.web("#253041");
-        Color normalBg = Color.web("#1D2433");
+        // Highlight avatar và timer của người đang active
+        Color activeGlowColor = Color.web("#FFD700"); // Vàng gold cho người active
 
-        if (p1Box != null) {
-            p1Box.setBackground(new Background(new BackgroundFill(
-                    p1Turn ? activeBg : normalBg,
-                    new CornerRadii(8),
-                    Insets.EMPTY)));
-            p1Box.setBorder(new Border(new BorderStroke(
-                    p1Turn ? activeBorder : normalBorder,
-                    BorderStrokeStyle.SOLID,
-                    new CornerRadii(8),
-                    new BorderWidths(p1Turn ? 2 : 1))));
-            if (p1Turn && avatar1 != null) {
-                avatar1.setEffect(new Glow(0.5));
-            } else if (avatar1 != null) {
-                avatar1.setEffect(new DropShadow(8, Color.color(0, 0, 0, 0.3)));
+        if (avatar1 != null) {
+            if (p1Turn) {
+                // Player 1 đang active
+                DropShadow glow = new DropShadow();
+                glow.setColor(Color.web("#E74C3C"));
+                glow.setRadius(15);
+                glow.setSpread(0.6);
+                avatar1.setEffect(glow);
+                if (lblPlayer1Time != null) {
+                    lblPlayer1Time.setStyle("-fx-background-color: #E74C3C; -fx-background-radius: 6;");
+                }
+            } else {
+                // Player 1 không active
+                DropShadow normalGlow = new DropShadow();
+                normalGlow.setColor(Color.web("#E74C3C"));
+                normalGlow.setRadius(5);
+                normalGlow.setSpread(0.2);
+                avatar1.setEffect(normalGlow);
+                if (lblPlayer1Time != null) {
+                    lblPlayer1Time.setStyle("-fx-background-color: #5A3232; -fx-background-radius: 6;");
+                }
             }
         }
 
-        if (p2Box != null) {
-            p2Box.setBackground(new Background(new BackgroundFill(
-                    !p1Turn ? activeBg : normalBg,
-                    new CornerRadii(8),
-                    Insets.EMPTY)));
-            p2Box.setBorder(new Border(new BorderStroke(
-                    !p1Turn ? activeBorder : normalBorder,
-                    BorderStrokeStyle.SOLID,
-                    new CornerRadii(8),
-                    new BorderWidths(!p1Turn ? 2 : 1))));
-            if (!p1Turn && avatar2 != null) {
-                avatar2.setEffect(new Glow(0.5));
-            } else if (avatar2 != null) {
-                avatar2.setEffect(new DropShadow(8, Color.color(0, 0, 0, 0.3)));
+        if (avatar2 != null) {
+            if (!p1Turn) {
+                // Player 2 đang active
+                DropShadow glow = new DropShadow();
+                glow.setColor(Color.web("#2ECC71"));
+                glow.setRadius(15);
+                glow.setSpread(0.6);
+                avatar2.setEffect(glow);
+                if (lblPlayer2Time != null) {
+                    lblPlayer2Time.setStyle("-fx-background-color: #2ECC71; -fx-background-radius: 6;");
+                }
+            } else {
+                // Player 2 không active
+                DropShadow normalGlow = new DropShadow();
+                normalGlow.setColor(Color.web("#2ECC71"));
+                normalGlow.setRadius(5);
+                normalGlow.setSpread(0.2);
+                avatar2.setEffect(normalGlow);
+                if (lblPlayer2Time != null) {
+                    lblPlayer2Time.setStyle("-fx-background-color: #1E5C38; -fx-background-radius: 6;");
+                }
             }
         }
     }
@@ -756,49 +762,23 @@ public class MainClientFX extends Application {
     private void updateTimeLabels() {
         long p1Time = gameState.getPlayer1RemainingMillis();
         long p2Time = gameState.getPlayer2RemainingMillis();
-        lblPlayer1Time.setText(formatMillis(p1Time));
-        lblPlayer2Time.setText(formatMillis(p2Time));
 
-        // Cập nhật progress bar cho player 1
-        if (progressFill1 != null) {
-            double progress1 = Math.max(0, Math.min(1, p1Time / (INITIAL_TIME_SECONDS * 1000)));
-            double barWidth = 180 * progress1;
-            progressFill1.setWidth(barWidth);
-
-            // Đổi màu theo thời gian còn lại
+        if (lblPlayer1Time != null) {
+            lblPlayer1Time.setText(formatMillis(p1Time));
+            // Đổi màu text khi gần hết giờ
             if (p1Time < 10000) { // < 10 giây - cảnh báo đỏ
-                progressFill1.setFill(Color.web("#FF0000"));
                 lblPlayer1Time.setTextFill(Color.web("#FF4444"));
-            } else if (p1Time < 60000) { // < 1 phút
-                progressFill1.setFill(Color.web("#FF8844"));
-                lblPlayer1Time.setTextFill(Color.WHITE);
-            } else if (p1Time < 120000) { // < 2 phút
-                progressFill1.setFill(Color.web("#FFAA00"));
-                lblPlayer1Time.setTextFill(Color.WHITE);
             } else {
-                progressFill1.setFill(Color.web("#4A90E2"));
                 lblPlayer1Time.setTextFill(Color.WHITE);
             }
         }
 
-        // Cập nhật progress bar cho player 2
-        if (progressFill2 != null) {
-            double progress2 = Math.max(0, Math.min(1, p2Time / (INITIAL_TIME_SECONDS * 1000)));
-            double barWidth = 180 * progress2;
-            progressFill2.setWidth(barWidth);
-
-            // Đổi màu theo thời gian còn lại
+        if (lblPlayer2Time != null) {
+            lblPlayer2Time.setText(formatMillis(p2Time));
+            // Đổi màu text khi gần hết giờ
             if (p2Time < 10000) { // < 10 giây - cảnh báo đỏ
-                progressFill2.setFill(Color.web("#FF0000"));
                 lblPlayer2Time.setTextFill(Color.web("#FF4444"));
-            } else if (p2Time < 60000) { // < 1 phút
-                progressFill2.setFill(Color.web("#FF8844"));
-                lblPlayer2Time.setTextFill(Color.WHITE);
-            } else if (p2Time < 120000) { // < 2 phút
-                progressFill2.setFill(Color.web("#FFAA00"));
-                lblPlayer2Time.setTextFill(Color.WHITE);
             } else {
-                progressFill2.setFill(Color.web("#50C878"));
                 lblPlayer2Time.setTextFill(Color.WHITE);
             }
         }
