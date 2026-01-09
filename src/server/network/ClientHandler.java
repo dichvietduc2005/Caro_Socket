@@ -13,8 +13,10 @@ public class ClientHandler implements Runnable {
     private ObjectOutputStream out;
     private ObjectInputStream in;
     private GameRoom gameRoom;
+    private ServerSocketManager serverManager;
     private int playerID; // 1 hoặc 2 (được set bởi GameRoom)
     private String playerName = "Player"; // Tên người chơi (nhận từ JoinPacket)
+    private boolean nameSet = false; // Cờ để kiểm tra đã nhận JoinPacket chưa
 
     public ClientHandler(Socket socket) {
         this.socket = socket;
@@ -31,6 +33,10 @@ public class ClientHandler implements Runnable {
         this.gameRoom = gameRoom;
     }
 
+    public void setServerManager(ServerSocketManager serverManager) {
+        this.serverManager = serverManager;
+    }
+
     public void setPlayerID(int id) {
         this.playerID = id;
     }
@@ -41,6 +47,10 @@ public class ClientHandler implements Runnable {
 
     public String getPlayerName() {
         return playerName;
+    }
+
+    public boolean isNameSet() {
+        return nameSet;
     }
 
     // Gửi packet xuống Client
@@ -87,7 +97,13 @@ public class ClientHandler implements Runnable {
             if (packet instanceof JoinPacket) {
                 JoinPacket joinPacket = (JoinPacket) packet;
                 this.playerName = joinPacket.getPlayerName();
+                this.nameSet = true;
                 System.out.println("Player joined: " + playerName);
+                
+                // Thông báo cho ServerManager để kiểm tra xem game có thể bắt đầu không
+                if (serverManager != null) {
+                    serverManager.onClientJoinPacketReceived(this);
+                }
             }
             return;
         }

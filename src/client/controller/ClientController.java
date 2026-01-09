@@ -87,8 +87,10 @@ public class ClientController {
                         player1Name = sp.getOpponentName();
                         player2Name = localName;
                     }
+                    System.out.println("DEBUG START PACKET: player1Name=" + player1Name + ", player2Name=" + player2Name + ", opponentName=" + sp.getOpponentName());
                     gameState.resetForNewGame(player1Name, player2Name);
                     gameState.setLocalPlayerSymbol(sp.getYourSymbol());
+                    mainFX.updatePlayerNames(player1Name, player2Name);
                     mainFX.switchToGameScene();
                     break;
 

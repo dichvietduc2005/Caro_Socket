@@ -48,6 +48,8 @@ public class MainClientFX extends Application {
 
     private Label lblPlayer1Time;
     private Label lblPlayer2Time;
+    private Label lblPlayer1Name;
+    private Label lblPlayer2Name;
 
     private Circle avatar1;
     private Circle avatar2;
@@ -95,6 +97,15 @@ public class MainClientFX extends Application {
                 startTimer();
             });
             fadeOut.play();
+        }
+    }
+
+    public void updatePlayerNames(String player1Name, String player2Name) {
+        if (lblPlayer1Name != null) {
+            lblPlayer1Name.setText(player1Name);
+        }
+        if (lblPlayer2Name != null) {
+            lblPlayer2Name.setText(player2Name);
         }
     }
 
@@ -501,9 +512,11 @@ public class MainClientFX extends Application {
         if (symbol == 'X') {
             avatar1 = iconBg;
             lblPlayer1Time = timeLabel;
+            lblPlayer1Name = nameLabel;
         } else {
             avatar2 = iconBg;
             lblPlayer2Time = timeLabel;
+            lblPlayer2Name = nameLabel;
         }
 
         return new VBox(card);

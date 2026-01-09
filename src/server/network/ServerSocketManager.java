@@ -9,6 +9,7 @@ import java.util.UUID;
 public class ServerSocketManager {
     private int port;
     private ClientHandler waitingClient = null; // Người chơi đang chờ ghép cặp
+    private GameRoom pendingRoom = null; // Phòng chờ JoinPacket từ cả 2 người chơi
 
     public ServerSocketManager(int port) {
         this.port = port;
@@ -39,6 +40,7 @@ public class ServerSocketManager {
         if (waitingClient == null) {
             // Chưa có ai chờ, client này sẽ chờ
             waitingClient = clientHandler;
+            waitingClient.setServerManager(this);
             waitingClient.sendMessage("Waiting for another player...");
         } else {
             // Đã có người chờ, ghép cặp ngay
@@ -51,16 +53,26 @@ public class ServerSocketManager {
             // Gán phòng cho cả 2 client
             waitingClient.setGameRoom(room);
             clientHandler.setGameRoom(room);
+            clientHandler.setServerManager(this);
+            
+            // Lưu phòng chờ JoinPacket từ cả 2 người chơi
+            this.pendingRoom = room;
 
             // Bắt đầu luồng lắng nghe của cả 2
             new Thread(waitingClient).start();
             new Thread(clientHandler).start();
 
-            // Khởi động game
-            room.startGame();
-
             // Reset người chờ
             waitingClient = null;
+        }
+    }
+
+    public synchronized void onClientJoinPacketReceived(ClientHandler client) {
+        // Khi client gửi JoinPacket, kiểm tra xem phòng có đủ 2 người chơi chưa
+        if (pendingRoom != null && pendingRoom.bothPlayersReady()) {
+            System.out.println("Both players ready, starting game...");
+            pendingRoom.startGame();
+            pendingRoom = null;
         }
     }
 }

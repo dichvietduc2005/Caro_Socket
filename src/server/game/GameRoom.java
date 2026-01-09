@@ -22,6 +22,11 @@ public class GameRoom {
         p2.setPlayerID(2);
     }
 
+    public boolean bothPlayersReady() {
+        // Kiểm tra xem cả 2 người chơi đã gửi JoinPacket chưa
+        return player1.isNameSet() && player2.isNameSet();
+    }
+
     public void startGame() {
         // Gửi thông tin bắt đầu game với tên thật của đối thủ
         // Player 1: Đối thủ là Player 2, Bạn cầm X
