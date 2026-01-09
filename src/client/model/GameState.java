@@ -19,7 +19,8 @@ public class GameState {
     private String player1Name;
     private String player2Name;
 
-    // Mặc định local là player1 (X), sẽ được cập nhật khi nhận StartPacket từ server
+    // Mặc định local là player1 (X), sẽ được cập nhật khi nhận StartPacket từ
+    // server
     private boolean localIsPlayer1 = true;
 
     private boolean player1Turn;
@@ -29,12 +30,12 @@ public class GameState {
     private long player2RemainingMillis;
 
     private static final long INITIAL_TIME_MILLIS = 5L * 60L * 1000L;
-    
+
     // Thông tin về chiến thắng
     private int winningLineRow = -1;
     private int winningLineCol = -1;
-    private int winningLineDR = 0;  // Direction row
-    private int winningLineDC = 0;  // Direction col
+    private int winningLineDR = 0; // Direction row
+    private int winningLineDC = 0; // Direction col
 
     public GameState() {
         this.boardSize = GameConfig.BOARD_SIZE;
@@ -58,6 +59,7 @@ public class GameState {
 
     /**
      * Cập nhật vai trò của người chơi local dựa trên symbol nhận từ server
+     * 
      * @param yourSymbol "X" hoặc "O" - symbol của người chơi local
      */
     public void setLocalPlayerSymbol(String yourSymbol) {
@@ -156,6 +158,13 @@ public class GameState {
         player1Turn = !player1Turn;
     }
 
+    /**
+     * Set trực tiếp lượt đi (dùng để đồng bộ với Server)
+     */
+    public void setPlayer1Turn(boolean isPlayer1Turn) {
+        this.player1Turn = isPlayer1Turn;
+    }
+
     public char getSymbolAt(int row, int col) {
         int v = board[row][col];
         if (v == PLAYER1) {
@@ -252,22 +261,21 @@ public class GameState {
         }
         return true;
     }
-    
+
     // Getter cho thông tin đường chiến thắng
     public int getWinningLineRow() {
         return winningLineRow;
     }
-    
+
     public int getWinningLineCol() {
         return winningLineCol;
     }
-    
+
     public int getWinningLineDR() {
         return winningLineDR;
     }
-    
+
     public int getWinningLineDC() {
         return winningLineDC;
     }
 }
-

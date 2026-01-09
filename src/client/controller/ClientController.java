@@ -7,11 +7,13 @@ import client.network.ClientSocket;
 import common.packet.*;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 
 public class ClientController {
 
     private final GameState gameState;
     private final MainClientFX mainFX;
+    private String localPlayerName; // Lưu tên người chơi local
 
     public ClientController(GameState gameState, MainClientFX mainFX) {
         this.gameState = gameState;
@@ -19,11 +21,17 @@ public class ClientController {
     }
 
     public void onPlayNow(String playerName) {
+        // Hiển thị loading indicator
+        Platform.runLater(() -> {
+            mainFX.showLoadingDialog("Đang tìm đối thủ...", "Đang tìm đối thủ, phù hợp với bạn...");
+        });
+        
         // 1. Kết nối mạng
         if (!ClientSocket.getInstance().isConnected()) {
             if (!ClientSocket.getInstance().connect()) {
                 Platform.runLater(() -> {
-                    new Alert(Alert.AlertType.ERROR, "Không thể kết nối tới Server!").showAndWait();
+                    mainFX.hideLoadingDialog();
+                    mainFX.showCustomErrorDialog("Tìm đối thủ thất bại", "Không tìm được đối thủ!");
                 });
                 return;
             }
@@ -31,9 +39,14 @@ public class ClientController {
             new Thread(new ClientReceiver(this)).start();
         }
 
-        // 2. Gửi JoinPacket
+        // 2. Lưu tên người chơi local
         String name = (playerName == null || playerName.trim().isEmpty()) ? "Player" : playerName.trim();
+        this.localPlayerName = name;
+
+        // 3. Gửi JoinPacket
         ClientSocket.getInstance().send(new JoinPacket(name));
+        
+        // Loading sẽ được ẩn khi nhận StartPacket trong onPacketReceived
     }
 
     public void onLocalCellClicked(int row, int col) {
@@ -45,8 +58,7 @@ public class ClientController {
             return;
         }
 
-        // --- SỬA LỖI TẠI ĐÂY ---
-        // MovePacket chỉ cần row và col. Server đã biết ai gửi gói tin này rồi.
+        // Gửi nước đi lên Server
         ClientSocket.getInstance().send(new MovePacket(row, col));
     }
 
@@ -56,28 +68,43 @@ public class ClientController {
             PacketType type = packet.getType();
             switch (type) {
                 case START:
+                    // Ẩn loading dialog
+                    mainFX.hideLoadingDialog();
+                    
                     StartPacket sp = (StartPacket) packet;
-                    gameState.resetForNewGame(gameState.getPlayer1Name(), sp.getOpponentName());
+                    // Xác định tên player1 và player2 dựa trên symbol
+                    // Nếu local nhận "X" thì local là player1, nếu nhận "O" thì local là player2
+                    String player1Name, player2Name;
+                    // Đảm bảo localPlayerName đã được set (fallback về "Player" nếu null)
+                    String localName = (localPlayerName != null && !localPlayerName.trim().isEmpty()) 
+                            ? localPlayerName : "Player";
+                    if ("X".equalsIgnoreCase(sp.getYourSymbol())) {
+                        // Local là player1 (X)
+                        player1Name = localName;
+                        player2Name = sp.getOpponentName();
+                    } else {
+                        // Local là player2 (O)
+                        player1Name = sp.getOpponentName();
+                        player2Name = localName;
+                    }
+                    gameState.resetForNewGame(player1Name, player2Name);
                     gameState.setLocalPlayerSymbol(sp.getYourSymbol());
                     mainFX.switchToGameScene();
                     break;
 
-                // --- CẬP NHẬT LOGIC NHẬN BÀN CỜ TỪ SERVER ---
-                // Server gửi UpdatePacket thay vì MovePacket
                 case UPDATE:
                     if (packet instanceof UpdatePacket) {
                         UpdatePacket up = (UpdatePacket) packet;
                         int[][] board = up.getBoard();
                         int nextTurnPlayerId = up.getCurrentPlayer();
 
-                        // Cập nhật lại toàn bộ giao diện bàn cờ dựa trên mảng 2 chiều nhận được
+                        // --- LOGIC QUAN TRỌNG: Cập nhật bàn cờ và tìm nước đi mới ---
                         updateBoardUI(board);
 
-                        // Cập nhật lượt đi (Server gửi ID người đi tiếp: 1 hoặc 2)
-                        // Bạn cần ánh xạ ID này về logic của client (IsLocalTurn hay không)
-                        // Giả sử: StartPacket trả về ID của mình, ta cần lưu lại để so sánh.
-                        // Để đơn giản, ta cứ đổi lượt dựa trên state hiện tại:
-                        gameState.switchTurn();
+                        // Đồng bộ lượt đi chính xác với Server
+                        // Server gửi nextTurnPlayerId: 1 = player1 (X), 2 = player2 (O)
+                        boolean isPlayer1Turn = (nextTurnPlayerId == 1);
+                        gameState.setPlayer1Turn(isPlayer1Turn);
                         mainFX.updateTurnHighlight();
                     }
                     break;
@@ -86,19 +113,25 @@ public class ClientController {
                     ResultPacket rp = (ResultPacket) packet;
                     gameState.setGameOver(true);
                     mainFX.stopTimer();
-                    // Code 1: Thắng, Code 2: Thua, Code 4: Đối thủ thoát
-                    String msg = (rp.getResultCode() == 1 || rp.getResultCode() == 4) ? "CHIẾN THẮNG!" : "THẤT BẠI!";
                     mainFX.showResultAlert(rp.getResultCode());
                     break;
 
                 case MESSAGE:
                     MessagePacket msgPacket = (MessagePacket) packet;
-                    new Alert(Alert.AlertType.INFORMATION, msgPacket.getMessage()).showAndWait();
+                    mainFX.showCustomMessageDialog(msgPacket.getMessage());
                     break;
 
                 case ERROR:
                     ErrorPacket err = (ErrorPacket) packet;
-                    new Alert(Alert.AlertType.ERROR, err.getErrorMessage()).show();
+                    mainFX.showCustomErrorDialog("Lỗi", err.getErrorMessage());
+                    break;
+
+                case DRAW_REQUEST:
+                    // Đối thủ yêu cầu cầu hòa
+                    mainFX.showCustomDrawRequestDialog(
+                            () -> onDrawResponse(true),
+                            () -> onDrawResponse(false)
+                    );
                     break;
 
                 default:
@@ -107,30 +140,76 @@ public class ClientController {
         });
     }
 
-    // Hàm phụ trợ để vẽ lại bàn cờ từ dữ liệu Server gửi về
-    private void updateBoardUI(int[][] board) {
-        for (int r = 0; r < board.length; r++) {
-            for (int c = 0; c < board[r].length; c++) {
-                int value = board[r][c]; // 0: Trống, 1: X, 2: O (Giả định quy ước Server)
-                if (value != 0) {
-                    // Mapping giá trị int sang ký tự
-                    char symbol = (value == 1) ? 'X' : 'O';
-                    gameState.placeMove(r, c); // Cập nhật logic client
-                    mainFX.updateBoardCell(r, c, symbol, true); // Vẽ lên giao diện
+    /**
+     * Hàm này thực hiện 3 bước:
+     * 1. Tìm sự khác biệt giữa bàn cờ Server gửi (board) và bàn cờ hiện tại (gameState).
+     * 2. Cập nhật dữ liệu vào gameState.
+     * 3. Vẽ lại giao diện, chỉ bật highlight cho nước đi mới nhất.
+     */
+    private void updateBoardUI(int[][] newBoard) {
+        int lastMoveRow = -1;
+        int lastMoveCol = -1;
+
+        // BƯỚC 1: Tìm ra nước đi mới (Server có quân mà Client đang trống)
+        for (int r = 0; r < newBoard.length; r++) {
+            for (int c = 0; c < newBoard[r].length; c++) {
+                if (newBoard[r][c] != 0 && gameState.getCell(r, c) == 0) {
+                    lastMoveRow = r;
+                    lastMoveCol = c;
                 }
             }
+        }
+
+        // BƯỚC 2: Cập nhật dữ liệu vào gameState và vẽ các quân cờ
+        for (int r = 0; r < newBoard.length; r++) {
+            for (int c = 0; c < newBoard[r].length; c++) {
+                if (newBoard[r][c] != 0) {
+                    // Cập nhật model
+                    // Lưu ý: Dùng hàm setCell hoặc tương đương để gán giá trị mà không check luật
+                    if (gameState.getCell(r, c) == 0) {
+                        gameState.placeMove(r, c); // Hoặc gameState.setCell(r, c, newBoard[r][c]) nếu có
+                    }
+
+                    // Mapping giá trị int sang ký tự
+                    char symbol = (newBoard[r][c] == 1) ? 'X' : 'O';
+
+                    // Vẽ quân cờ lên UI nhưng TẮT highlight trước
+                    mainFX.updateBoardCell(r, c, symbol, false);
+                }
+            }
+        }
+
+        // BƯỚC 3: Highlight riêng nước đi mới nhất (nếu tìm thấy)
+        if (lastMoveRow != -1) {
+            int value = newBoard[lastMoveRow][lastMoveCol];
+            char symbol = (value == 1) ? 'X' : 'O';
+            // BẬT highlight cho duy nhất ô này
+            mainFX.updateBoardCell(lastMoveRow, lastMoveCol, symbol, true);
         }
     }
 
     public void onTimeout() {
         Platform.runLater(() -> {
             mainFX.stopTimer();
+            // Nếu đến lượt mình mà hết giờ -> Mình thua (Đối thủ thắng)
             if (gameState.isLocalPlayersTurn()) {
-                mainFX.showResultAlert(GameState.RESULT_PLAYER2_WIN);
+                mainFX.showResultAlert(GameState.RESULT_PLAYER2_WIN); // Server sẽ gửi Result chuẩn, đây là dự đoán UI
             } else {
                 mainFX.showResultAlert(GameState.RESULT_PLAYER1_WIN);
             }
             gameState.setGameOver(true);
         });
+    }
+
+    public void onSurrender() {
+        ClientSocket.getInstance().send(new SurrenderPacket());
+    }
+
+    public void onDrawRequest() {
+        ClientSocket.getInstance().send(new DrawRequestPacket());
+    }
+
+    public void onDrawResponse(boolean accepted) {
+        ClientSocket.getInstance().send(new DrawResponsePacket(accepted));
     }
 }
