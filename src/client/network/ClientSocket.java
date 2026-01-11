@@ -22,9 +22,11 @@ public class ClientSocket {
 
     public boolean connect() {
         try {
-            if (socket != null && !socket.isClosed()) {
+            // Nếu socket còn sống thì dùng lại
+            if (socket != null && !socket.isClosed() && socket.isConnected()) {
                 return true;
             }
+            // Tạo mới hoàn toàn
             socket = new Socket(GameConfig.SERVER_IP, GameConfig.PORT);
             out = new ObjectOutputStream(socket.getOutputStream());
             in = new ObjectInputStream(socket.getInputStream());
@@ -41,6 +43,7 @@ public class ClientSocket {
         try {
             out.writeObject(packet);
             out.flush();
+            out.reset(); // QUAN TRỌNG: Thêm reset() để tránh lỗi cache object khi gửi nhiều lần
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -51,7 +54,7 @@ public class ClientSocket {
         try {
             return (Packet) in.readObject();
         } catch (IOException | ClassNotFoundException e) {
-            // e.printStackTrace();
+            // Khi socket đóng, hàm này sẽ ném lỗi -> Trả về null để Receiver dừng lại
             close();
             return null;
         }
@@ -59,15 +62,20 @@ public class ClientSocket {
 
     public void close() {
         try {
-            if (out != null) out.close();
-            if (in != null) in.close();
-            if (socket != null) socket.close();
-        } catch (IOException e) {
+            if (socket != null) {
+                socket.close();
+            }
+        } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            // QUAN TRỌNG: Reset về null để lần sau connect() sẽ new lại từ đầu
+            socket = null;
+            out = null;
+            in = null;
         }
     }
-    
+
     public boolean isConnected() {
-        return socket != null && !socket.isClosed() && socket.isConnected();
+        return socket != null && socket.isConnected() && !socket.isClosed();
     }
 }

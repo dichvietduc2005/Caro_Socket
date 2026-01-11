@@ -9,7 +9,12 @@ public class GameBoard {
     }
 
     public void reset() {
-        this.map = new int[SIZE][SIZE];
+        // Duyệt mảng 2 chiều gán về 0
+        for (int i = 0; i < SIZE; i++) {
+            for (int j = 0; j < SIZE; j++) {
+                map[i][j] = 0;
+            }
+        }
     }
 
     public int[][] getMap() {
