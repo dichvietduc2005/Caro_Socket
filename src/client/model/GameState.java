@@ -14,7 +14,7 @@ public class GameState {
     public static final int RESULT_DRAW = 3;
 
     private final int boardSize;
-    private final int[][] board;
+    private int[][] board;
 
     private String player1Name;
     private String player2Name;
@@ -46,11 +46,7 @@ public class GameState {
     public void resetForNewGame(String player1Name, String player2Name) {
         this.player1Name = player1Name;
         this.player2Name = player2Name;
-        for (int i = 0; i < boardSize; i++) {
-            for (int j = 0; j < boardSize; j++) {
-                board[i][j] = EMPTY;
-            }
-        }
+        this.board = new int[boardSize][boardSize];
         this.player1Turn = true;
         this.gameOver = false;
         this.player1RemainingMillis = INITIAL_TIME_MILLIS;
