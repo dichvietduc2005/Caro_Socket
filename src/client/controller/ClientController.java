@@ -25,7 +25,7 @@ public class ClientController {
         Platform.runLater(() -> {
             mainFX.showLoadingDialog("Đang tìm đối thủ...", "Đang tìm đối thủ, phù hợp với bạn...");
         });
-        
+
         // 1. Kết nối mạng
         if (!ClientSocket.getInstance().isConnected()) {
             if (!ClientSocket.getInstance().connect()) {
@@ -45,7 +45,7 @@ public class ClientController {
 
         // 3. Gửi JoinPacket
         ClientSocket.getInstance().send(new JoinPacket(name));
-        
+
         // Loading sẽ được ẩn khi nhận StartPacket trong onPacketReceived
     }
 
@@ -70,13 +70,13 @@ public class ClientController {
                 case START:
                     // Ẩn loading dialog
                     mainFX.hideLoadingDialog();
-                    
+
                     StartPacket sp = (StartPacket) packet;
                     // Xác định tên player1 và player2 dựa trên symbol
                     // Nếu local nhận "X" thì local là player1, nếu nhận "O" thì local là player2
                     String player1Name, player2Name;
                     // Đảm bảo localPlayerName đã được set (fallback về "Player" nếu null)
-                    String localName = (localPlayerName != null && !localPlayerName.trim().isEmpty()) 
+                    String localName = (localPlayerName != null && !localPlayerName.trim().isEmpty())
                             ? localPlayerName : "Player";
                     if ("X".equalsIgnoreCase(sp.getYourSymbol())) {
                         // Local là player1 (X)
@@ -193,13 +193,28 @@ public class ClientController {
     public void onTimeout() {
         Platform.runLater(() -> {
             mainFX.stopTimer();
-            // Nếu đến lượt mình mà hết giờ -> Mình thua (Đối thủ thắng)
-            if (gameState.isLocalPlayersTurn()) {
-                mainFX.showResultAlert(GameState.RESULT_PLAYER2_WIN); // Server sẽ gửi Result chuẩn, đây là dự đoán UI
-            } else {
-                mainFX.showResultAlert(GameState.RESULT_PLAYER1_WIN);
-            }
             gameState.setGameOver(true);
+
+            // Xử lý logic timeout:
+            // - Nếu là lượt của mình (Local) mà hết giờ -> Mình Thua -> Đối thủ Thắng
+            // - Nếu là lượt của đối thủ mà hết giờ -> Mình Thắng
+
+            boolean amIPlayer1 = (gameState.getLocalPlayerSymbol() == 'X');
+            boolean myTurn = gameState.isLocalPlayersTurn();
+
+            if (myTurn) {
+                // Mình hết giờ -> Mình thua
+                // Nếu mình là Player 1 (X) -> Player 2 thắng
+                // Nếu mình là Player 2 (O) -> Player 1 thắng
+                int result = amIPlayer1 ? GameState.RESULT_PLAYER2_WIN : GameState.RESULT_PLAYER1_WIN;
+                mainFX.showResultAlert(result);
+            } else {
+                // Đối thủ hết giờ -> Mình thắng
+                // Nếu mình là Player 1 (X) -> Player 1 thắng
+                // Nếu mình là Player 2 (O) -> Player 2 thắng
+                int result = amIPlayer1 ? GameState.RESULT_PLAYER1_WIN : GameState.RESULT_PLAYER2_WIN;
+                mainFX.showResultAlert(result);
+            }
         });
     }
 

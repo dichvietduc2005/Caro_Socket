@@ -83,7 +83,7 @@ public class MainClientFX extends Application {
     public void switchToGameScene() {
         if (primaryStage != null) {
             Scene gameScene = createGameScene(primaryStage);
-            
+
             // Fade transition khi chuyển scene
             FadeTransition fadeOut = new FadeTransition(Duration.millis(200), primaryStage.getScene().getRoot());
             fadeOut.setFromValue(1.0);
@@ -363,7 +363,7 @@ public class MainClientFX extends Application {
                         hoverShadow.setRadius(6);
                         hoverShadow.setSpread(0.4);
                         cell.setEffect(hoverShadow);
-                        
+
                         // Preview symbol khi hover (mờ)
                         char previewSymbol = gameState.getLocalPlayerSymbol();
                         Label previewLabel = new Label(String.valueOf(previewSymbol));
@@ -411,7 +411,7 @@ public class MainClientFX extends Application {
         btnSurrender.setPrefWidth(140);
         btnDraw.setPrefWidth(140);
         btnLeave.setPrefWidth(140);
-        
+
         // Tooltip cho các nút
         javafx.scene.control.Tooltip.install(btnSurrender, new javafx.scene.control.Tooltip("Xin thua và kết thúc ván cờ"));
         javafx.scene.control.Tooltip.install(btnDraw, new javafx.scene.control.Tooltip("Gửi yêu cầu cầu hòa đến đối thủ"));
@@ -685,7 +685,7 @@ public class MainClientFX extends Application {
             FadeTransition fadeIn = new FadeTransition(Duration.millis(300), piece);
             fadeIn.setFromValue(0);
             fadeIn.setToValue(1);
-            
+
             // Scale animation với bounce effect
             ScaleTransition scaleIn = new ScaleTransition(Duration.millis(400), piece);
             scaleIn.setFromX(0.3);
@@ -693,7 +693,7 @@ public class MainClientFX extends Application {
             scaleIn.setToX(1.1);
             scaleIn.setToY(1.1);
             scaleIn.setInterpolator(Interpolator.EASE_OUT);
-            
+
             // Bounce back
             ScaleTransition bounceBack = new ScaleTransition(Duration.millis(200), piece);
             bounceBack.setFromX(1.1);
@@ -701,108 +701,13 @@ public class MainClientFX extends Application {
             bounceBack.setToX(1.0);
             bounceBack.setToY(1.0);
             bounceBack.setInterpolator(Interpolator.EASE_IN);
-            
+
             // Chạy animation tuần tự
             fadeIn.play();
             scaleIn.play();
             scaleIn.setOnFinished(e -> bounceBack.play());
         }
     }
-//    public void updateBoardCell(int row, int col, char symbol, boolean highlight) {
-//        Button cell = cells[row][col];
-//        StackPane cellPane = cellPanes[row][col];
-//
-//        // Xóa graphic cũ nếu có
-//        cell.setGraphic(null);
-//        cellPane.getChildren().removeIf(n -> n instanceof Line || (n instanceof Circle && n != cell));
-//
-//        // Tạo Shape cho X hoặc O với glow effect
-//        Node piece = null;
-//        Color pieceColor = symbol == 'X' ? Color.web("#4A90E2") : Color.web("#50C878");
-//
-//        if (symbol == 'X') {
-//            // Vẽ X bằng 2 đường Line
-//            double size = cell.getPrefWidth() * 0.6;
-//            double centerX = cell.getPrefWidth() / 2;
-//            double centerY = cell.getPrefHeight() / 2;
-//
-//            Line line1 = new Line(centerX - size / 2, centerY - size / 2, centerX + size / 2, centerY + size / 2);
-//            Line line2 = new Line(centerX - size / 2, centerY + size / 2, centerX + size / 2, centerY - size / 2);
-//
-//            line1.setStroke(pieceColor);
-//            line2.setStroke(pieceColor);
-//            line1.setStrokeWidth(4);
-//            line2.setStrokeWidth(4);
-//            line1.setStrokeLineCap(StrokeLineCap.ROUND);
-//            line2.setStrokeLineCap(StrokeLineCap.ROUND);
-//
-//            // Glow effect cho X
-//            DropShadow xGlow = new DropShadow();
-//            xGlow.setColor(pieceColor);
-//            xGlow.setRadius(8);
-//            xGlow.setSpread(0.6);
-//            line1.setEffect(xGlow);
-//            line2.setEffect(xGlow);
-//
-//            Group xGroup = new Group(line1, line2);
-//            cellPane.getChildren().add(xGroup);
-//            piece = xGroup;
-//        } else if (symbol == 'O') {
-//            // Vẽ O bằng Circle
-//            double radius = cell.getPrefWidth() * 0.25;
-//            Circle circle = new Circle(cell.getPrefWidth() / 2, cell.getPrefHeight() / 2, radius);
-//            circle.setFill(null);
-//            circle.setStroke(pieceColor);
-//            circle.setStrokeWidth(4);
-//
-//            // Glow effect cho O
-//            DropShadow oGlow = new DropShadow();
-//            oGlow.setColor(pieceColor);
-//            oGlow.setRadius(8);
-//            oGlow.setSpread(0.6);
-//            circle.setEffect(oGlow);
-//
-//            cellPane.getChildren().add(circle);
-//            piece = circle;
-//        }
-//
-//        // Highlight nước đi cuối với viền sáng
-//        if (highlight) {
-//            resetBoardHighlight();
-//
-//            // Viền sáng cho ô vừa đánh
-//            Border highlightBorder = new Border(new BorderStroke(
-//                    Color.web("#FFD700"),
-//                    BorderStrokeStyle.SOLID,
-//                    CornerRadii.EMPTY,
-//                    new BorderWidths(2)));
-//            cell.setBorder(highlightBorder);
-//
-//            // Glow effect cho border
-//            DropShadow borderGlow = new DropShadow();
-//            borderGlow.setColor(Color.web("#FFD700"));
-//            borderGlow.setRadius(6);
-//            borderGlow.setSpread(0.5);
-//            cell.setEffect(borderGlow);
-//        }
-//
-//        // Animation fade-in và scale khi xuất hiện symbol
-//        if (piece != null) {
-//            FadeTransition fadeIn = new FadeTransition(Duration.millis(250), piece);
-//            fadeIn.setFromValue(0);
-//            fadeIn.setToValue(1);
-//
-//            ScaleTransition scaleIn = new ScaleTransition(Duration.millis(250), piece);
-//            scaleIn.setFromX(0.3);
-//            scaleIn.setFromY(0.3);
-//            scaleIn.setToX(1);
-//            scaleIn.setToY(1);
-//            scaleIn.setInterpolator(Interpolator.EASE_OUT);
-//
-//            fadeIn.play();
-//            scaleIn.play();
-//        }
-//    }
 
     private void resetBoardHighlight() {
         int size = gameState.getBoardSize();
@@ -844,7 +749,7 @@ public class MainClientFX extends Application {
                                 "-fx-border-radius: 8; " +
                                 "-fx-background-radius: 8;");
             }
-            
+
             if (p1Turn && avatar1 != null) {
                 Glow glow = new Glow(0.6);
                 avatar1.setEffect(glow);
@@ -867,7 +772,7 @@ public class MainClientFX extends Application {
                                 "-fx-border-radius: 8; " +
                                 "-fx-background-radius: 8;");
             }
-            
+
             if (!p1Turn && avatar2 != null) {
                 Glow glow = new Glow(0.6);
                 avatar2.setEffect(glow);
@@ -909,7 +814,7 @@ public class MainClientFX extends Application {
     private void updateTimeLabels() {
         long p1Time = gameState.getPlayer1RemainingMillis();
         long p2Time = gameState.getPlayer2RemainingMillis();
-        
+
         if (lblPlayer1Time != null) {
             lblPlayer1Time.setText(formatMillis(p1Time));
             // Đổi màu theo thời gian còn lại
@@ -1005,14 +910,14 @@ public class MainClientFX extends Application {
             if (loadingDialogStage != null) {
                 loadingDialogStage.close();
             }
-            
+
             loadingDialogStage = new Stage();
             loadingDialogStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
             loadingDialogStage.initStyle(javafx.stage.StageStyle.UNDECORATED);
             if (primaryStage != null) {
                 loadingDialogStage.initOwner(primaryStage);
             }
-            
+
             VBox dialogVBox = new VBox(20);
             dialogVBox.setPadding(new Insets(30));
             dialogVBox.setAlignment(Pos.CENTER);
@@ -1022,35 +927,35 @@ public class MainClientFX extends Application {
                             "-fx-border-width: 2; " +
                             "-fx-border-radius: 12; " +
                             "-fx-background-radius: 12;");
-            
+
             // Spinner animation
             Circle spinner = new Circle(20);
             spinner.setFill(null);
             spinner.setStroke(Color.web("#4A90E2"));
             spinner.setStrokeWidth(3);
-            
+
             RotateTransition rotate = new RotateTransition(Duration.millis(1000), spinner);
             rotate.setByAngle(360);
             rotate.setCycleCount(Timeline.INDEFINITE);
             rotate.play();
-            
+
             Label titleLabel = new Label(title);
             titleLabel.setTextFill(Color.WHITE);
             titleLabel.setFont(Font.font("Arial", FontWeight.BOLD, 16));
-            
+
             Label messageLabel = new Label(message);
             messageLabel.setTextFill(Color.web("#B0B0B0"));
             messageLabel.setFont(Font.font("Arial", 13));
-            
+
             dialogVBox.getChildren().addAll(spinner, titleLabel, messageLabel);
-            
+
             Scene dialogScene = new Scene(dialogVBox);
             dialogScene.setFill(Color.TRANSPARENT);
             loadingDialogStage.setScene(dialogScene);
             loadingDialogStage.show();
         });
     }
-    
+
     public void hideLoadingDialog() {
         Platform.runLater(() -> {
             if (loadingDialogStage != null) {
@@ -1061,26 +966,43 @@ public class MainClientFX extends Application {
     }
 
     public void showResultAlert(int result) {
-        String message;
         String title = "Kết quả";
+        String message = "";
         Color borderColor = Color.web("#4A90E2");
-        
-        switch (result) {
-            case GameState.RESULT_PLAYER1_WIN:
-                message = "Người chơi " + gameState.getPlayer1Name() + " thắng!";
+
+        boolean amIPlayer1 = (gameState.getLocalPlayerSymbol() == 'X');
+        boolean player1Won = (result == GameState.RESULT_PLAYER1_WIN);
+        boolean player2Won = (result == GameState.RESULT_PLAYER2_WIN);
+
+        if (player1Won || player2Won) {
+            boolean iWon = (amIPlayer1 && player1Won) || (!amIPlayer1 && player2Won);
+
+            if (iWon) {
+                title = "CHIẾN THẮNG";
+                message = "Bạn đã chiến thắng!";
                 borderColor = Color.web("#FFD700");
-                break;
-            case GameState.RESULT_PLAYER2_WIN:
-                message = "Đối thủ thắng!";
+            } else {
+                title = "THẤT BẠI";
+                String winnerName = player1Won ? gameState.getPlayer1Name() : gameState.getPlayer2Name();
+                if (winnerName == null || winnerName.trim().isEmpty()) {
+                    winnerName = "ĐỐI THỦ";
+                }
+                message = "Người chơi " + winnerName + " chiến thắng!";
                 borderColor = Color.web("#FF4444");
-                break;
-            case GameState.RESULT_DRAW:
-                message = "Hòa!";
-                borderColor = Color.web("#50C878");
-                break;
-            default:
-                message = "Kết thúc ván!";
+            }
+        } else if (result == GameState.RESULT_DRAW) {
+            title = "HÒA";
+            message = "Ván đấu kết thúc với tỉ số hòa!";
+            borderColor = Color.web("#50C878");
+        } else if (result == 4) {
+            // Trường hợp đối thủ thoát game hoặc ngắt kết nối
+            title = "CHIẾN THẮNG";
+            message = "Đối thủ đã thoát trận.\nBẠN ĐÃ CHIẾN THẮNG!";
+            borderColor = Color.web("#FFD700");
+        } else {
+            message = "Kết thúc ván!";
         }
+
         showCustomResultDialog(title, message, borderColor);
     }
 
@@ -1251,27 +1173,27 @@ public class MainClientFX extends Application {
         button.setTextFill(Color.WHITE);
         button.setFont(Font.font("Arial", FontWeight.BOLD, 13));
         button.setPrefHeight(38);
-        
+
         // Gradient background
         LinearGradient gradient = new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
                 new Stop(0, color1),
                 new Stop(1, color2));
         button.setBackground(new Background(new BackgroundFill(gradient, new CornerRadii(6), Insets.EMPTY)));
-        
+
         // Border
         button.setBorder(new Border(new BorderStroke(
                 Color.web("#FFFFFF", 0.2),
                 BorderStrokeStyle.SOLID,
                 new CornerRadii(6),
                 new BorderWidths(1))));
-        
+
         // Glow effect
         DropShadow glow = new DropShadow();
         glow.setColor(color1);
         glow.setRadius(6);
         glow.setSpread(0.3);
         button.setEffect(glow);
-        
+
         // Hover effects
         button.setOnMouseEntered(e -> {
             LinearGradient hoverGradient = new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
@@ -1284,12 +1206,12 @@ public class MainClientFX extends Application {
             hoverGlow.setSpread(0.4);
             button.setEffect(hoverGlow);
         });
-        
+
         button.setOnMouseExited(e -> {
             button.setBackground(new Background(new BackgroundFill(gradient, new CornerRadii(6), Insets.EMPTY)));
             button.setEffect(glow);
         });
-        
+
         return button;
     }
 
@@ -1324,7 +1246,7 @@ public class MainClientFX extends Application {
 
         Button btnOK = createModernButton("Xác nhận", Color.web("#4A90E2"), Color.web("#357ABD"));
         Button btnCancel = createModernButton("Hủy", Color.web("#666666"), Color.web("#444444"));
-        
+
         btnOK.setPrefWidth(100);
         btnCancel.setPrefWidth(100);
 

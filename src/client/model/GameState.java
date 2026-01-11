@@ -29,7 +29,7 @@ public class GameState {
     private long player1RemainingMillis;
     private long player2RemainingMillis;
 
-    private static final long INITIAL_TIME_MILLIS = 5L * 60L * 1000L;
+    private static final long INITIAL_TIME_MILLIS = 1L * 60L * 1000L;
 
     // Thông tin về chiến thắng
     private int winningLineRow = -1;
