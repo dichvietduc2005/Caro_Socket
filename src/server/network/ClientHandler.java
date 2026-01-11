@@ -66,9 +66,8 @@ public class ClientHandler implements Runnable {
 
     // Gửi thông báo dạng chuỗi (dùng MessagePacket nếu có, hoặc custom)
     public void sendMessage(String msg) {
-        // Giả sử bạn có class MessagePacket extends Packet
-        // sendPacket(new MessagePacket(msg));
-        System.out.println("Server to Client " + (playerID != 0 ? playerID : "?") + ": " + msg);
+        // Gửi MessagePacket về client với isSystemMessage = true
+        sendPacket(new MessagePacket(msg, true));
     }
 
     @Override
@@ -92,15 +91,13 @@ public class ClientHandler implements Runnable {
     private void handlePacket(Packet packet) {
         PacketType type = packet.getType();
 
-        // Xử lý JoinPacket - lưu tên người chơi
+        // Xử lý JoinPacket
         if (type == PacketType.JOIN) {
             if (packet instanceof JoinPacket) {
                 JoinPacket joinPacket = (JoinPacket) packet;
                 this.playerName = joinPacket.getPlayerName();
                 this.nameSet = true;
                 System.out.println("Player joined: " + playerName);
-                
-                // Thông báo cho ServerManager để kiểm tra xem game có thể bắt đầu không
                 if (serverManager != null) {
                     serverManager.onClientJoinPacketReceived(this);
                 }
@@ -108,7 +105,7 @@ public class ClientHandler implements Runnable {
             return;
         }
 
-        // Xử lý MovePacket - nước đi
+        // Xử lý MovePacket
         if (type == PacketType.MOVE) {
             if (packet instanceof MovePacket) {
                 MovePacket move = (MovePacket) packet;
@@ -117,7 +114,7 @@ public class ClientHandler implements Runnable {
             return;
         }
 
-        // Xử lý SurrenderPacket - xin thua
+        // Xử lý SurrenderPacket
         if (type == PacketType.SURRENDER) {
             if (gameRoom != null) {
                 gameRoom.handleSurrender(this);
@@ -125,7 +122,7 @@ public class ClientHandler implements Runnable {
             return;
         }
 
-        // Xử lý DrawRequestPacket - yêu cầu cầu hòa
+        // Xử lý DrawRequestPacket
         if (type == PacketType.DRAW_REQUEST) {
             if (gameRoom != null) {
                 gameRoom.handleDrawRequest(this);
@@ -133,7 +130,7 @@ public class ClientHandler implements Runnable {
             return;
         }
 
-        // Xử lý DrawResponsePacket - phản hồi cầu hòa
+        // Xử lý DrawResponsePacket
         if (type == PacketType.DRAW_RESPONSE) {
             if (packet instanceof DrawResponsePacket && gameRoom != null) {
                 DrawResponsePacket response = (DrawResponsePacket) packet;
@@ -141,6 +138,23 @@ public class ClientHandler implements Runnable {
             }
             return;
         }
+
+        // --- CẬP NHẬT MỚI: Xử lý Yêu cầu Chơi lại ---
+        if (type == PacketType.PLAY_AGAIN_REQUEST) {
+            if (gameRoom != null) {
+                gameRoom.handlePlayAgainRequest(this);
+            }
+            return;
+        }
+
+        if (type == PacketType.PLAY_AGAIN_RESPONSE) {
+            if (packet instanceof PlayAgainResponsePacket && gameRoom != null) {
+                PlayAgainResponsePacket response = (PlayAgainResponsePacket) packet;
+                gameRoom.handlePlayAgainResponse(this, response.isAccepted());
+            }
+            return;
+        }
+        // ---------------------------------------------
     }
 
     public void close() {

@@ -10,12 +10,16 @@ public class GameRoom {
     private GameBoard gameBoard;
     private int currentTurn; // 1 hoặc 2
 
+    // Biến cờ để kiểm tra game đã kết thúc chưa
+    private boolean isGameOver = false;
+
     public GameRoom(String roomId, ClientHandler p1, ClientHandler p2) {
         this.roomId = roomId;
         this.player1 = p1;
         this.player2 = p2;
         this.gameBoard = new GameBoard();
         this.currentTurn = 1; // Mặc định người 1 đi trước (X)
+        this.isGameOver = false;
 
         // Gán ID nội bộ
         p1.setPlayerID(1);
@@ -23,16 +27,13 @@ public class GameRoom {
     }
 
     public boolean bothPlayersReady() {
-        // Kiểm tra xem cả 2 người chơi đã gửi JoinPacket chưa
         return player1.isNameSet() && player2.isNameSet();
     }
 
     public void startGame() {
-        // Gửi thông tin bắt đầu game với tên thật của đối thủ
-        // Player 1: Đối thủ là Player 2, Bạn cầm X
+        // Gửi thông tin bắt đầu game
+        // Constructor StartPacket(opponentName, yourSymbol)
         player1.sendPacket(new StartPacket(player2.getPlayerName(), "X"));
-
-        // Player 2: Đối thủ là Player 1, Bạn cầm O
         player2.sendPacket(new StartPacket(player1.getPlayerName(), "O"));
 
         System.out.println("Room " + roomId + " started: "
@@ -40,106 +41,144 @@ public class GameRoom {
     }
 
     public synchronized void processMove(ClientHandler sender, int x, int y) {
-        // 1. Kiểm tra lượt đi
-        if (sender.getPlayerID() != currentTurn) {
-            return; // Không phải lượt của người này
+        // Nếu game đã kết thúc hoặc không phải lượt thì bỏ qua
+        if (isGameOver || sender.getPlayerID() != currentTurn) {
+            return;
         }
 
-        // 2. Thực hiện nước đi trên bàn cờ logic
+        // Thực hiện nước đi
         boolean moved = gameBoard.makeMove(x, y, currentTurn);
         if (!moved) {
-            return; // Nước đi không hợp lệ (đã có quân hoặc ngoài bàn cờ)
+            return;
         }
 
-        // 3. Kiểm tra thắng thua TRƯỚC khi đổi lượt
+        // Kiểm tra thắng thua
         boolean isWin = gameBoard.checkWin(x, y, currentTurn);
 
-        // 4. Đổi lượt (để báo cho client biết ai đi tiếp)
+        // Đổi lượt
         switchTurn();
 
-        // 5. Gửi cập nhật bàn cờ cho CẢ 2 người chơi
-        // Lúc này UpdatePacket đã khớp constructor (int[][], int)
+        // Gửi cập nhật bàn cờ
         UpdatePacket updatePacket = new UpdatePacket(gameBoard.getMap(), currentTurn);
         player1.sendPacket(updatePacket);
         player2.sendPacket(updatePacket);
 
-        // 6. Xử lý kết quả trận đấu nếu có người thắng
+        // Xử lý kết quả trận đấu nếu có người thắng
         if (isWin) {
+            isGameOver = true; // Đánh dấu game kết thúc
+
             ClientHandler winner = sender;
             ClientHandler loser = (sender == player1) ? player2 : player1;
 
-            // Gửi gói tin kết quả (Code 1: Thắng, Code 2: Thua)
             winner.sendPacket(new ResultPacket(1, "Bạn đã chiến thắng!"));
             loser.sendPacket(new ResultPacket(2, "Bạn đã thua cuộc!"));
             return;
         }
 
-        // 7. Kiểm tra hòa (bàn cờ đầy)
+        // Kiểm tra hòa (bàn cờ đầy)
         if (checkDraw()) {
+            isGameOver = true; // Đánh dấu game kết thúc
+
             player1.sendPacket(new ResultPacket(3, "Trận đấu hòa - bàn cờ đã đầy!"));
             player2.sendPacket(new ResultPacket(3, "Trận đấu hòa - bàn cờ đã đầy!"));
             System.out.println("Room " + roomId + ": Draw - board is full.");
         }
     }
 
+    // --- PHƯƠNG THỨC BỊ THIẾU CỦA BẠN ---
     public void switchTurn() {
         currentTurn = (currentTurn == 1) ? 2 : 1;
     }
+    // ------------------------------------
 
     public void handleDisconnect(ClientHandler client) {
+        // Nếu game đã kết thúc (thắng/thua/hòa) thì việc thoát là bình thường -> Không báo lỗi
+        if (isGameOver) {
+            ClientHandler remaining = (client == player1) ? player2 : player1;
+            if (remaining != null) {
+                remaining.sendPacket(new MessagePacket("Đối thủ đã rời phòng.", true));
+            }
+            return;
+        }
+
+        // Nếu game ĐANG CHƠI mà thoát -> Xử thua
         ClientHandler remaining = (client == player1) ? player2 : player1;
-        // Code 4: Đối thủ thoát
-        remaining.sendPacket(new ResultPacket(4, "Đối thủ đã thoát trận. Bạn thắng!"));
+        if (remaining != null) {
+            isGameOver = true;
+            // Code 4: Đối thủ thoát
+            remaining.sendPacket(new ResultPacket(4, "Đối thủ đã thoát trận. Bạn thắng!"));
+        }
     }
 
-    /**
-     * Xử lý khi một người chơi xin thua
-     */
+    public void handlePlayAgainRequest(ClientHandler sender) {
+        ClientHandler opponent = (sender == player1) ? player2 : player1;
+        if (opponent != null) {
+            opponent.sendPacket(new PlayAgainRequestPacket());
+            sender.sendMessage("Đã gửi yêu cầu chơi lại. Đang chờ đối thủ...");
+        }
+    }
+
+    public void handlePlayAgainResponse(ClientHandler sender, boolean accepted) {
+        ClientHandler opponent = (sender == player1) ? player2 : player1;
+
+        if (opponent != null) {
+            opponent.sendPacket(new PlayAgainResponsePacket(accepted));
+        }
+
+        if (accepted) {
+            resetGame();
+        }
+    }
+
+    private void resetGame() {
+        // 1. Reset bàn cờ logic
+        if (this.gameBoard != null) {
+            this.gameBoard.reset();
+        }
+
+        // 2. Reset trạng thái phòng
+        this.currentTurn = 1;
+        this.isGameOver = false;
+
+        // 3. Gửi gói tin START game mới
+        if (player1 != null && player2 != null) {
+            player1.sendPacket(new StartPacket(player2.getPlayerName(), "X"));
+            player2.sendPacket(new StartPacket(player1.getPlayerName(), "O"));
+
+            System.out.println("Game restarted in room " + roomId);
+        }
+    }
+
     public synchronized void handleSurrender(ClientHandler sender) {
+        isGameOver = true; // Đánh dấu kết thúc
+
         ClientHandler winner = (sender == player1) ? player2 : player1;
-
-        // Người xin thua nhận kết quả thua (code 2)
         sender.sendPacket(new ResultPacket(2, "Bạn đã xin thua!"));
-
-        // Đối thủ nhận kết quả thắng (code 1)
         winner.sendPacket(new ResultPacket(1, "Đối thủ đã xin thua. Bạn thắng!"));
 
         System.out.println("Room " + roomId + ": " + sender.getPlayerName() + " surrendered.");
     }
 
-    /**
-     * Xử lý khi một người chơi yêu cầu cầu hòa
-     */
     public synchronized void handleDrawRequest(ClientHandler sender) {
         ClientHandler receiver = (sender == player1) ? player2 : player1;
-
-        // Gửi thông báo cho đối thủ về yêu cầu cầu hòa
         receiver.sendPacket(new DrawRequestPacket());
-
         System.out.println("Room " + roomId + ": " + sender.getPlayerName() + " requested a draw.");
     }
 
-    /**
-     * Xử lý phản hồi cầu hòa
-     */
     public synchronized void handleDrawResponse(ClientHandler sender, boolean accepted) {
         ClientHandler requester = (sender == player1) ? player2 : player1;
 
         if (accepted) {
-            // Cả hai đều hòa (code 3)
+            isGameOver = true; // Đánh dấu kết thúc
             player1.sendPacket(new ResultPacket(3, "Trận đấu hòa!"));
             player2.sendPacket(new ResultPacket(3, "Trận đấu hòa!"));
             System.out.println("Room " + roomId + ": Draw accepted.");
         } else {
-            // Thông báo yêu cầu hòa bị từ chối
             requester.sendPacket(new MessagePacket("Đối thủ đã từ chối yêu cầu cầu hòa.", true));
             System.out.println("Room " + roomId + ": Draw rejected by " + sender.getPlayerName());
         }
     }
 
-    /**
-     * Kiểm tra bàn cờ đầy (hòa)
-     */
     private boolean checkDraw() {
         return gameBoard.isFull();
     }

@@ -10,5 +10,7 @@ public enum PacketType {
     ERROR, // Thông báo lỗi
     SURRENDER, // Xin thua
     DRAW_REQUEST, // Yêu cầu cầu hòa
-    DRAW_RESPONSE // Phản hồi cầu hòa (accept/reject)
+    DRAW_RESPONSE, // Phản hồi cầu hòa (accept/reject)
+    PLAY_AGAIN_REQUEST,
+    PLAY_AGAIN_RESPONSE
 }

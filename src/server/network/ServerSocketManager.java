@@ -41,7 +41,6 @@ public class ServerSocketManager {
             // Chưa có ai chờ, client này sẽ chờ
             waitingClient = clientHandler;
             waitingClient.setServerManager(this);
-            waitingClient.sendMessage("Waiting for another player...");
         } else {
             // Đã có người chờ, ghép cặp ngay
             String roomId = UUID.randomUUID().toString();
